@@ -31,30 +31,25 @@
 <div id="controls">🖱 拖拽旋转 &nbsp;|&nbsp; 📜 滚轮缩放 &nbsp;|&nbsp; 👆 右键平移</div>
 
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
 </script>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// --- Scene Setup ---
+// Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a2e);
 scene.fog = new THREE.Fog(0x1a1a2e, 15, 60);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 100);
-camera.position.set(8, 3, 14);
-camera.lookAt(0, 0.5, 0);
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.5, 100);
+camera.position.set(8, 3.5, 14);
+camera.lookAt(0, 1.5, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -62,7 +57,7 @@ renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.5, 0);
+controls.target.set(0, 1.5, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.minDistance = 3;
@@ -70,550 +65,469 @@ controls.maxDistance = 25;
 controls.maxPolarAngle = Math.PI * 0.8;
 controls.update();
 
-// --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffeedd, 0.8);
-scene.add(ambientLight);
+// Lighting
+scene.add(new THREE.AmbientLight(0xffeedd, 0.7));
+const sun = new THREE.DirectionalLight(0xfff5e8, 4);
+sun.position.set(10, 14, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -15; sun.shadow.camera.right = 15;
+sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -5;
+sun.shadow.bias = -0.0001;
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0x8899cc, 1));
+scene.add(new THREE.DirectionalLight(0xffffff, 1.2));
+scene.add(new THREE.DirectionalLight(0x334466, 0.5));
 
-const sunLight = new THREE.DirectionalLight(0xfff5e8, 4.5);
-sunLight.position.set(12, 15, 8);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 60;
-sunLight.shadow.camera.left = -15;
-sunLight.shadow.camera.right = 15;
-sunLight.shadow.camera.top = 15;
-sunLight.shadow.camera.bottom = -5;
-sunLight.shadow.bias = -0.0001;
-scene.add(sunLight);
+// Materials (from GLM-4.6V analysis)
+const hullMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.65, metalness: 0.05 });
+const hullAccent = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.6, metalness: 0.05 });
+const deckMat = new THREE.MeshStandardMaterial({ color: 0xA0724A, roughness: 0.55, metalness: 0.03 });
+const sailMat = new THREE.MeshStandardMaterial({ color: 0x8B0000, roughness: 0.75, metalness: 0.0, side: THREE.DoubleSide });
+const sailRib = new THREE.MeshStandardMaterial({ color: 0x6B1010, roughness: 0.65, metalness: 0.05 });
+const mastMat = new THREE.MeshStandardMaterial({ color: 0x4A2F10, roughness: 0.55, metalness: 0.05 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xDAA520, roughness: 0.3, metalness: 0.6 });
+const redRail = new THREE.MeshStandardMaterial({ color: 0xCC0000, roughness: 0.45, metalness: 0.1 });
+const buildingRed = new THREE.MeshStandardMaterial({ color: 0xCC2222, roughness: 0.4, metalness: 0.1 });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x1A0A05, roughness: 0.5, metalness: 0.05 });
+const blueAccent = new THREE.MeshStandardMaterial({ color: 0x2244AA, roughness: 0.4, metalness: 0.15 });
 
-const fillLight = new THREE.DirectionalLight(0x8899cc, 1.2);
-fillLight.position.set(-5, 2, -3);
-scene.add(fillLight);
+const ship = new THREE.Group();
+const L = 10; // ship length
 
-const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
-rimLight.position.set(0, 0, -8);
-scene.add(rimLight);
-
-const bottomLight = new THREE.DirectionalLight(0x334466, 0.6);
-bottomLight.position.set(0, -3, 0);
-scene.add(bottomLight);
-
-// --- Materials ---
-const woodDark = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.7, metalness: 0.05 });
-const woodMedium = new THREE.MeshStandardMaterial({ color: 0x7B4F2A, roughness: 0.65, metalness: 0.05 });
-const woodLight = new THREE.MeshStandardMaterial({ color: 0xA0724A, roughness: 0.6, metalness: 0.05 });
-const woodDeck = new THREE.MeshStandardMaterial({ color: 0x9B6B3D, roughness: 0.55, metalness: 0.03 });
-const sailMat = new THREE.MeshStandardMaterial({ color: 0xF5F0DD, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
-const sailRibMat = new THREE.MeshStandardMaterial({ color: 0xC4A86A, roughness: 0.7, metalness: 0.05 });
-const mastMat = new THREE.MeshStandardMaterial({ color: 0x4A2F10, roughness: 0.6, metalness: 0.05 });
-const redMat = new THREE.MeshStandardMaterial({ color: 0xC41E3A, roughness: 0.5, metalness: 0.1 });
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xDAA520, roughness: 0.35, metalness: 0.5 });
-const roofMat = new THREE.MeshStandardMaterial({ color: 0x2C1810, roughness: 0.55, metalness: 0.08 });
-const pillarMat = new THREE.MeshStandardMaterial({ color: 0xB22222, roughness: 0.45, metalness: 0.1 });
-const whiteMat = new THREE.MeshStandardMaterial({ color: 0xF8F0E0, roughness: 0.5, metalness: 0.05 });
-
-const shipGroup = new THREE.Group();
-
-// ============ HULL ============
+// ======== HULL ========
 function createHull() {
-  const hullGroup = new THREE.Group();
-  
-  // Main hull body - elongated, curved shape
-  const hullLength = 10;
-  const hullWidth = 2.8;
-  const hullHeight = 0.9;
-  
+  const g = new THREE.Group();
+  const W = L * 0.28;
+
+  // Main hull body
+  const hGeo = new THREE.BoxGeometry(L * 0.88, 0.7, W * 0.72, 4, 2, 4);
+  const pos = hGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    pos.setXYZ(i, x * (1 - Math.abs(x/(L*0.44))*0.55), y < -0.2 ? -0.2-(y+0.2)*0.4*(1-Math.abs(x/(L*0.44))) : y, z*(y<0?1:0.8));
+  }
+  hGeo.computeVertexNormals();
+  const hull = new THREE.Mesh(hGeo, hullMat);
+  hull.position.y = -0.1;
+  hull.castShadow = hull.receiveShadow = true;
+  g.add(hull);
+
   // Bottom keel
-  const keelGeo = new THREE.BoxGeometry(hullLength * 0.95, 0.4, 0.5);
-  const keel = new THREE.Mesh(keelGeo, woodDark);
+  const keel = new THREE.Mesh(new THREE.BoxGeometry(L*0.92, 0.35, 0.45), hullAccent);
   keel.position.y = -0.55;
-  keel.castShadow = true;
-  keel.receiveShadow = true;
-  hullGroup.add(keel);
-  
-  // Main hull body - wider in middle, narrower at ends
-  const hullBodyPoints = [];
-  const segments = 20;
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const x = (t - 0.5) * hullLength;
-    // Width profile: widest at center
-    const w = hullWidth * 0.5 * (1 - Math.pow(t * 2 - 1, 2) * 0.7);
-    // Height profile
-    const h = hullHeight * (1 - Math.pow(t * 2 - 1, 6) * 0.6);
-    hullBodyPoints.push(new THREE.Vector2(w, h));
-  }
-  
-  const hullBodyGeo = new THREE.LatheGeometry(hullBodyPoints, 32, 0, Math.PI * 2 * 0.5);
-  const hullBody = new THREE.Mesh(hullBodyGeo, woodMedium);
-  hullBody.rotation.z = -Math.PI / 2;
-  hullBody.scale.set(1, hullLength, 1);
-  hullBody.position.y = -0.3;
-  hullBody.castShadow = true;
-  hullBody.receiveShadow = true;
-  hullGroup.add(hullBody);
-  
-  // Use a simpler approach - extended box for hull main body
-  const hullMainGeo = new THREE.BoxGeometry(hullLength * 0.9, 0.7, hullWidth * 0.75, 4, 2, 4);
-  // Modify vertices for curved hull shape
-  const positions = hullMainGeo.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const y = positions.getY(i);
-    const z = positions.getZ(i);
-    // Taper ends
-    const taperX = 1 - Math.abs(x / (hullLength * 0.45)) * 0.6;
-    // Curve bottom
-    const curveY = y < -0.2 ? -0.2 - (y + 0.2) * 0.5 * (1 - Math.abs(x / (hullLength * 0.45))) : y;
-    positions.setXYZ(i, x * taperX, curveY, z * (y < 0 ? 1 : 0.85));
-  }
-  hullMainGeo.computeVertexNormals();
-  const hullMain = new THREE.Mesh(hullMainGeo, woodMedium);
-  hullMain.position.y = -0.15;
-  hullMain.castShadow = true;
-  hullMain.receiveShadow = true;
-  hullGroup.add(hullMain);
-  
-  // Upper hull sides (bulwark)
-  const bulwarkGeo = new THREE.BoxGeometry(hullLength * 0.88, 0.5, hullWidth * 0.72, 4, 1, 2);
-  const bulwark = new THREE.Mesh(bulwarkGeo, woodLight);
-  bulwark.position.y = 0.3;
-  bulwark.castShadow = true;
-  bulwark.receiveShadow = true;
-  hullGroup.add(bulwark);
-  
-  // Bow prow (船首) - pointed front
-  const bowGeo = new THREE.ConeGeometry(0.35, 1.8, 8, 4);
-  const bow = new THREE.Mesh(bowGeo, woodMedium);
-  bow.rotation.x = Math.PI / 2;
-  bow.position.set(hullLength * 0.5, -0.2, 0);
-  bow.scale.set(1, 1, 0.7);
-  bow.castShadow = true;
-  hullGroup.add(bow);
-  
-  // Bow upper extension
-  const bowUpperGeo = new THREE.BoxGeometry(1.2, 0.3, 0.3);
-  const bowUpper = new THREE.Mesh(bowUpperGeo, woodLight);
-  bowUpper.position.set(hullLength * 0.48, 0.5, 0);
-  bowUpper.rotation.z = -0.2;
-  bowUpper.castShadow = true;
-  hullGroup.add(bowUpper);
-  
-  // Stern rudder (船舵)
-  const rudderGeo = new THREE.BoxGeometry(0.15, 2.2, 1.2);
-  const rudder = new THREE.Mesh(rudderGeo, woodDark);
-  rudder.position.set(-hullLength * 0.45, -1.2, 0);
-  rudder.castShadow = true;
-  hullGroup.add(rudder);
-  
-  return hullGroup;
+  keel.castShadow = keel.receiveShadow = true;
+  g.add(keel);
+
+  // Bulwark (舷墙)
+  const bw = new THREE.Mesh(new THREE.BoxGeometry(L*0.85, 0.4, W*0.65, 4, 1, 2), hullAccent);
+  bw.position.y = 0.35;
+  bw.castShadow = bw.receiveShadow = true;
+  g.add(bw);
+
+  // Bow extension
+  const bowTip = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.6, 8, 4), hullMat);
+  bowTip.rotation.x = Math.PI/2;
+  bowTip.position.set(L*0.48, -0.15, 0);
+  bowTip.scale.set(1,1,0.65);
+  bowTip.castShadow = true;
+  g.add(bowTip);
+
+  // Rudder (船舵)
+  const rud = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2, 1), hullAccent);
+  rud.position.set(-L*0.43, -1.1, 0);
+  rud.castShadow = true;
+  g.add(rud);
+
+  return g;
 }
 
-// ============ DRAGON HEAD PROW ============
+// ======== GOLDEN DRAGON HEAD PROW ========
 function createDragonHead() {
-  const dragonGroup = new THREE.Group();
-  
+  const g = new THREE.Group();
+
   // Neck
-  const neckGeo = new THREE.CylinderGeometry(0.22, 0.32, 1.0, 8);
-  const neck = new THREE.Mesh(neckGeo, redMat);
-  neck.rotation.x = -0.4;
-  neck.position.set(5.2, 0.6, 0);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.9, 8), goldMat);
+  neck.rotation.x = -0.35;
+  neck.position.set(L*0.51, 0.65, 0);
   neck.castShadow = true;
-  dragonGroup.add(neck);
-  
+  g.add(neck);
+
   // Head
-  const headGeo = new THREE.SphereGeometry(0.4, 8, 6);
-  const head = new THREE.Mesh(headGeo, redMat);
-  head.position.set(5.7, 1.0, 0);
-  head.scale.set(1.2, 0.9, 0.8);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), goldMat);
+  head.position.set(L*0.56, 1.05, 0);
+  head.scale.set(1.15, 0.85, 0.75);
   head.castShadow = true;
-  dragonGroup.add(head);
-  
-  // Upper jaw
-  const jawGeo = new THREE.BoxGeometry(0.4, 0.12, 0.25);
-  const jaw = new THREE.Mesh(jawGeo, redMat);
-  jaw.position.set(6.0, 0.9, 0);
-  jaw.castShadow = true;
-  dragonGroup.add(jaw);
-  
+  g.add(head);
+
+  // Snout
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.22), goldMat);
+  snout.position.set(L*0.59, 0.95, 0);
+  snout.castShadow = true;
+  g.add(snout);
+
   // Lower jaw
-  const lowerJawGeo = new THREE.BoxGeometry(0.5, 0.1, 0.22);
-  const lowerJaw = new THREE.Mesh(lowerJawGeo, redMat);
-  lowerJaw.position.set(6.0, 0.72, -0.05);
-  lowerJaw.castShadow = true;
-  dragonGroup.add(lowerJaw);
-  
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.2), goldMat);
+  jaw.position.set(L*0.59, 0.78, -0.04);
+  jaw.castShadow = true;
+  g.add(jaw);
+
   // Eyes
-  const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
-  const leftEye = new THREE.Mesh(eyeGeo, goldMat);
-  leftEye.position.set(5.85, 1.1, 0.2);
-  dragonGroup.add(leftEye);
-  const rightEye = new THREE.Mesh(eyeGeo, goldMat);
-  rightEye.position.set(5.85, 1.1, -0.2);
-  dragonGroup.add(rightEye);
-  
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({color:0xFF0000,roughness:0.2,emissive:0x440000}));
+  [-0.18, 0.18].forEach(z => {
+    const e = new THREE.Mesh(eye.geometry, eye.material);
+    e.position.set(L*0.575, 1.15, z);
+    g.add(e);
+  });
+
+  // Curled whiskers
+  [-0.22, 0.22].forEach(z => {
+    const wGeo = new THREE.TorusGeometry(0.25, 0.04, 6, 8, Math.PI*0.8);
+    const w = new THREE.Mesh(wGeo, goldMat);
+    w.position.set(L*0.58, 0.82, z);
+    w.rotation.x = 0.5;
+    w.rotation.z = z > 0 ? -0.4 : 0.4;
+    w.rotation.y = Math.PI/2;
+    g.add(w);
+  });
+
   // Horns
-  const hornGeo = new THREE.ConeGeometry(0.06, 0.5, 6);
-  const leftHorn = new THREE.Mesh(hornGeo, goldMat);
-  leftHorn.position.set(5.55, 1.3, 0.25);
-  leftHorn.rotation.z = 0.6;
-  leftHorn.rotation.x = 0.3;
-  dragonGroup.add(leftHorn);
-  const rightHorn = new THREE.Mesh(hornGeo, goldMat);
-  rightHorn.position.set(5.55, 1.3, -0.25);
-  rightHorn.rotation.z = 0.6;
-  rightHorn.rotation.x = -0.3;
-  dragonGroup.add(rightHorn);
-  
-  // Gold mane
-  for (let i = 0; i < 3; i++) {
-    const maneGeo = new THREE.BoxGeometry(0.15, 0.08, 0.3);
-    const mane = new THREE.Mesh(maneGeo, goldMat);
-    mane.position.set(5.3, 1.0, (i - 1) * 0.25);
-    mane.rotation.z = 0.5;
-    dragonGroup.add(mane);
+  [-0.2, 0.2].forEach(z => {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.45, 6), goldMat);
+    h.position.set(L*0.54, 1.35, z);
+    h.rotation.z = 0.5;
+    h.rotation.x = z > 0 ? 0.25 : -0.25;
+    g.add(h);
+  });
+
+  // Scales
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.25), goldMat);
+    s.position.set(L*0.52, 0.85 - i*0.12, 0);
+    g.add(s);
   }
-  
-  return dragonGroup;
+
+  return g;
 }
 
-// ============ MASTS AND SAILS ============
+// ======== MASTS (4 masts, deep red sails) ========
 function createMasts() {
-  const mastsGroup = new THREE.Group();
-  const hullLength = 10;
-  
-  // 9 masts positioned along the ship
-  const mastPositions = [];
-  const totalMasts = 9;
-  
-  for (let i = 0; i < totalMasts; i++) {
-    const t = i / (totalMasts - 1); // 0 (stern) to 1 (bow)
-    const x = (t - 0.5) * hullLength * 0.78; // position along ship
-    // Height profile: tallest near center, shorter at ends
-    const height = 4.5 * (1 - Math.pow(t - 0.5, 2) * 0.5);
-    mastPositions.push({ x, height, t });
-  }
-  
-  mastPositions.forEach((mp, index) => {
+  const g = new THREE.Group();
+  const mastData = [
+    { pos: 0.15, h: 4.2, sails: 1 },
+    { pos: 0.35, h: 4.8, sails: 2 },
+    { pos: 0.55, h: 5.2, sails: 2 },
+    { pos: 0.75, h: 4.5, sails: 1 },
+  ];
+
+  mastData.forEach(m => {
+    const x = (m.pos - 0.5) * L * 0.78;
+    const baseY = 0.6;
+
     // Mast pole
-    const mastGeo = new THREE.CylinderGeometry(0.08, 0.1, mp.height, 8);
-    const mast = new THREE.Mesh(mastGeo, mastMat);
-    mast.position.set(mp.x, mp.height / 2 + 0.6, 0);
-    mast.castShadow = true;
-    mast.receiveShadow = true;
-    mastsGroup.add(mast);
-    
-    // Cross beams (yardarms) - Chinese junks have multiple
-    const yardCount = 3;
-    for (let j = 0; j < yardCount; j++) {
-      const yardY = 0.6 + mp.height * (0.25 + j * 0.3);
-      const yardWidth = 1.2 * (1 - Math.abs(index - 4) / totalMasts * 0.4);
-      const yardGeo = new THREE.CylinderGeometry(0.04, 0.04, yardWidth, 6);
-      const yard = new THREE.Mesh(yardGeo, mastMat);
-      yard.rotation.z = Math.PI / 2;
-      yard.position.set(mp.x, yardY, 0);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, m.h, 8), mastMat);
+    pole.position.set(x, baseY + m.h/2, 0);
+    pole.castShadow = pole.receiveShadow = true;
+    g.add(pole);
+
+    // Yardarms
+    for (let j = 0; j < m.sails; j++) {
+      const yy = baseY + m.h * (0.2 + j * (0.7 / m.sails));
+      const yw = 1.0 + j * 0.1;
+      const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, yw, 6).rotateZ(Math.PI/2), mastMat);
+      yard.position.set(x, yy, 0);
       yard.castShadow = true;
-      mastsGroup.add(yard);
+      g.add(yard);
     }
-    
-    // Sail - Chinese junk-style rectangular sail with battens
-    const sailWidth = 1.0 * (1 - Math.abs(index - 4) / totalMasts * 0.4);
-    const sailHeight = mp.height * 0.55;
-    const sailGeo = new THREE.PlaneGeometry(sailWidth, sailHeight, 4, 8);
-    
-    // Give sail slight billow
-    const sailPositions = sailGeo.attributes.position;
-    for (let k = 0; k < sailPositions.count; k++) {
-      const sx = sailPositions.getX(k);
-      const sy = sailPositions.getY(k);
-      sailPositions.setZ(k, Math.abs(sx) * 0.12 + sy * 0.02);
-    }
-    sailGeo.computeVertexNormals();
-    
-    const sail = new THREE.Mesh(sailGeo, sailMat);
-    sail.position.set(mp.x, 0.6 + sailHeight / 2 + 0.4, 0);
-    sail.castShadow = true;
-    sail.receiveShadow = true;
-    mastsGroup.add(sail);
-    
-    // Horizontal battens on sail (bamboo strips)
-    const battenCount = 6;
-    for (let b = 0; b < battenCount; b++) {
-      const battenY = 0.6 + 0.4 + (b + 0.5) * (sailHeight / battenCount);
-      const battenGeo = new THREE.BoxGeometry(sailWidth * 1.05, 0.03, 0.04);
-      const batten = new THREE.Mesh(battenGeo, sailRibMat);
-      batten.position.set(mp.x, battenY, 0.01);
-      batten.castShadow = true;
-      mastsGroup.add(batten);
+
+    // Sails - deep red Chinese lug sails
+    for (let j = 0; j < m.sails; j++) {
+      const sailH = m.h * 0.28;
+      const sailW = 0.95;
+      const sGeo = new THREE.PlaneGeometry(sailW, sailH, 3, 6);
+      const sp = sGeo.attributes.position;
+      for (let k = 0; k < sp.count; k++) {
+        sp.setZ(k, Math.abs(sp.getX(k)) * 0.1 + sp.getY(k) * 0.02);
+      }
+      sGeo.computeVertexNormals();
+      const sail = new THREE.Mesh(sGeo, sailMat);
+      sail.position.set(x, baseY + m.h * (0.2 + (j+0.5) * (0.7/m.sails)), 0);
+      sail.castShadow = sail.receiveShadow = true;
+      g.add(sail);
+
+      // Bamboo battens
+      for (let b = 0; b < 5; b++) {
+        const by = baseY + m.h * (0.2 + (j*0.7/m.sails) + (b+0.5)*((0.7/m.sails)/5));
+        const batten = new THREE.Mesh(new THREE.BoxGeometry(sailW*1.04, 0.025, 0.03), sailRib);
+        batten.position.set(x, by, 0.01);
+        g.add(batten);
+      }
     }
   });
-  
-  return mastsGroup;
+  return g;
 }
 
-// ============ STERN CASTLE (尾楼) ============
-function createSternCastle() {
-  const castleGroup = new THREE.Group();
-  
-  // Platform base
-  const baseGeo = new THREE.BoxGeometry(2.2, 0.3, 2.4);
-  const base = new THREE.Mesh(baseGeo, woodDark);
-  base.position.set(-4.0, 0.5, 0);
-  base.castShadow = true;
-  base.receiveShadow = true;
-  castleGroup.add(base);
-  
-  // Three tiers of the stern castle
+// ======== CENTRAL BUILDING (3-story xieshan roof) ========
+function createCentralBuilding() {
+  const g = new THREE.Group();
   const tiers = [
-    { y: 0.8, w: 2.0, d: 2.2, h: 1.4 },
-    { y: 1.7, w: 1.7, d: 1.9, h: 1.3 },
-    { y: 2.55, w: 1.4, d: 1.6, h: 1.2 },
+    { y: 0.65, w: 2.2, d: 2.0, h: 1.1 },
+    { y: 1.95, w: 1.8, d: 1.6, h: 1.0 },
+    { y: 3.15, w: 1.4, d: 1.2, h: 0.9 },
   ];
-  
-  tiers.forEach((tier, ti) => {
-    // Walls
-    const wallGeo = new THREE.BoxGeometry(tier.w, tier.h, tier.d);
-    const wall = new THREE.Mesh(wallGeo, woodMedium);
-    wall.position.set(-4.0, tier.y + tier.h / 2, 0);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    castleGroup.add(wall);
-    
-    // Roof platform
-    const roofPlatGeo = new THREE.BoxGeometry(tier.w + 0.3, 0.12, tier.d + 0.3);
-    const roofPlat = new THREE.Mesh(roofPlatGeo, woodLight);
-    roofPlat.position.set(-4.0, tier.y + tier.h + 0.06, 0);
-    castleGroup.add(roofPlat);
-    
-    // Chinese-style curved roof (eaves)
-    const roofThickness = 0.15;
-    const roofOverhang = 0.6;
-    const roofGeo = new THREE.BoxGeometry(tier.w + roofOverhang * 2, roofThickness, tier.d + roofOverhang * 2);
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.set(-4.0, tier.y + tier.h + 0.25, 0);
-    roof.castShadow = true;
-    roof.receiveShadow = true;
-    castleGroup.add(roof);
-    
-    // Roof curve - upturned eaves (飞檐)
+
+  tiers.forEach(t => {
+    // Wall frame - red
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(t.w, t.h, t.d), buildingRed);
+    wall.position.set(0, t.y + t.h/2, 0);
+    wall.castShadow = wall.receiveShadow = true;
+    g.add(wall);
+
+    // Blue/gold decorative panels on walls
+    for (let s = 0; s < 2; s++) {
+      const sz = s === 0 ? t.d/2 + 0.01 : -(t.d/2 + 0.01);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(t.w*0.7, t.h*0.4, 0.02), blueAccent);
+      panel.position.set(0, t.y + t.h/2, sz);
+      g.add(panel);
+    }
+
+    // Xieshan roof (歇山顶)
+    const roofW = t.w + 0.8;
+    const roofD = t.d + 0.8;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofW, 0.12, roofD), roofMat);
+    roof.position.set(0, t.y + t.h + 0.08, 0);
+    roof.castShadow = roof.receiveShadow = true;
+    g.add(roof);
+
+    // Upturned eaves (飞檐)
     for (let c = 0; c < 4; c++) {
-      const cornerAngle = (c * Math.PI) / 2 + Math.PI / 4;
-      const cx = Math.cos(cornerAngle) * (tier.w / 2 + roofOverhang * 0.7);
-      const cz = Math.sin(cornerAngle) * (tier.d / 2 + roofOverhang * 0.7);
-      const eaveGeo = new THREE.ConeGeometry(0.15, 0.35, 6);
-      const eave = new THREE.Mesh(eaveGeo, roofMat);
-      eave.position.set(-4.0 + cx, tier.y + tier.h + 0.35, cz);
+      const a = c*Math.PI/2 + Math.PI/4;
+      const ex = Math.cos(a) * (roofW/2 + 0.15);
+      const ez = Math.sin(a) * (roofD/2 + 0.15);
+      const eave = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 6), roofMat);
+      eave.position.set(ex, t.y + t.h + 0.2, ez);
       eave.rotation.z = Math.PI;
       eave.castShadow = true;
-      castleGroup.add(eave);
+      g.add(eave);
     }
-    
-    // Red pillars on corners
+
+    // Gold trim on roof edge
+    for (let s = 0; s < 2; s++) {
+      const sz = s === 0 ? roofD/2 + 0.02 : -(roofD/2 + 0.02);
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(roofW*0.95, 0.03, 0.04), goldMat);
+      trim.position.set(0, t.y + t.h + 0.16, sz);
+      g.add(trim);
+    }
+
+    // Corner pillars
     for (let p = 0; p < 4; p++) {
-      const px = (p % 2 === 0 ? -1 : 1) * tier.w / 2 * 0.85;
-      const pz = (p < 2 ? -1 : 1) * tier.d / 2 * 0.85;
-      const pillarGeo = new THREE.CylinderGeometry(0.06, 0.06, tier.h - 0.05, 6);
-      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-      pillar.position.set(-4.0 + px, tier.y + tier.h / 2, pz);
-      pillar.castShadow = true;
-      castleGroup.add(pillar);
-    }
-    
-    // Decorative railings on each tier
-    const railHeight = 0.15;
-    for (let side = 0; side < 2; side++) {
-      const sz = side === 0 ? tier.d / 2 + 0.05 : -(tier.d / 2 + 0.05);
-      const railGeo = new THREE.BoxGeometry(tier.w * 0.9, railHeight, 0.05);
-      const rail = new THREE.Mesh(railGeo, woodLight);
-      rail.position.set(-4.0, tier.y + 0.15, sz);
-      castleGroup.add(rail);
-    }
-    for (let side = 0; side < 2; side++) {
-      const sx = side === 0 ? -4.0 + tier.w / 2 + 0.05 : -4.0 - tier.w / 2 - 0.05;
-      const railGeo = new THREE.BoxGeometry(0.05, railHeight, tier.d * 0.9);
-      const rail = new THREE.Mesh(railGeo, woodLight);
-      rail.position.set(sx, tier.y + 0.15, 0);
-      castleGroup.add(rail);
+      const px = (p%2===0?-1:1)*t.w/2*0.85;
+      const pz = (p<2?-1:1)*t.d/2*0.85;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, t.h-0.05, 6), buildingRed);
+      pillar.position.set(px, t.y + t.h/2, pz);
+      g.add(pillar);
     }
   });
-  
-  // Top finial / decoration
-  const finialGeo = new THREE.ConeGeometry(0.12, 0.5, 6);
-  const finial = new THREE.Mesh(finialGeo, goldMat);
-  finial.position.set(-4.0, 4.05, 0);
-  finial.castShadow = true;
-  castleGroup.add(finial);
-  
-  return castleGroup;
+
+  // Top finial
+  const finial = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 6), goldMat);
+  finial.position.set(0, 4.35, 0);
+  g.add(finial);
+
+  return g;
 }
 
-// ============ DECK DETAILS ============
+// ======== STERN PLATFORM (2-level elevated) ========
+function createSternPlatform() {
+  const g = new THREE.Group();
+
+  for (let i = 0; i < 2; i++) {
+    const y = 0.65 + i * 1.0;
+    const w = 1.8 - i * 0.3;
+    const d = 1.6 - i * 0.25;
+    const h = 0.5;
+
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), hullAccent);
+    plat.position.set(-L*0.32, y + h/2, 0);
+    plat.castShadow = plat.receiveShadow = true;
+    g.add(plat);
+
+    // Red railings
+    for (let s = 0; s < 2; s++) {
+      const sz = s === 0 ? d/2 : -d/2;
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(w*0.9, 0.06, 0.04), redRail);
+      rail.position.set(-L*0.32, y + h + 0.1, sz);
+      g.add(rail);
+      // Gold pattern dots on rails
+      for (let dg = 0; dg < 6; dg++) {
+        const dx = (-L*0.32 - w*0.4) + dg * (w*0.8/5);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), goldMat);
+        dot.position.set(dx, y + h + 0.14, sz);
+        g.add(dot);
+      }
+    }
+    for (let s = 0; s < 2; s++) {
+      const sx = s === 0 ? -L*0.32 + w/2 : -L*0.32 - w/2;
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, d*0.9), redRail);
+      rail.position.set(sx, y + h + 0.1, 0);
+      g.add(rail);
+    }
+  }
+  return g;
+}
+
+// ======== DECK WITH RED RAILINGS ========
 function createDeck() {
-  const deckGroup = new THREE.Group();
-  const hullLength = 10;
-  const hullWidth = 2.8;
-  
+  const g = new THREE.Group();
+  const W = L * 0.28;
+
   // Main deck
-  const deckGeo = new THREE.BoxGeometry(hullLength * 0.85, 0.08, hullWidth * 0.6);
-  const deck = new THREE.Mesh(deckGeo, woodDeck);
-  deck.position.y = 0.45;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(L*0.82, 0.06, W*0.55), deckMat);
+  deck.position.y = 0.5;
   deck.receiveShadow = true;
-  deckGroup.add(deck);
-  
-  // Deck planks (visual detail)
-  for (let i = 0; i < 15; i++) {
-    const px = (i / 14 - 0.5) * hullLength * 0.82;
-    const plankGeo = new THREE.BoxGeometry(hullLength * 0.82 / 15 * 0.9, 0.01, hullWidth * 0.55);
-    const plank = new THREE.Mesh(plankGeo, woodDeck);
-    plank.position.set(px, 0.5, 0);
-    deckGroup.add(plank);
+  g.add(deck);
+
+  // Deck planks
+  for (let i = 0; i < 14; i++) {
+    const px = (i/13 - 0.5) * L * 0.8;
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(L*0.8/14*0.9, 0.008, W*0.5), deckMat);
+    plank.position.set(px, 0.54, 0);
+    g.add(plank);
   }
-  
-  // Side railings
+
+  // Red railings with gold patterns
   for (let side = 0; side < 2; side++) {
-    const sz = side === 0 ? hullWidth * 0.3 : -hullWidth * 0.3;
-    const railGeo = new THREE.BoxGeometry(hullLength * 0.82, 0.08, 0.06);
-    const rail = new THREE.Mesh(railGeo, woodLight);
-    rail.position.set(0, 0.75, sz);
-    deckGroup.add(rail);
-    
-    // Railing posts
-    for (let r = 0; r < 18; r++) {
-      const rx = (r / 17 - 0.5) * hullLength * 0.81;
-      const postGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6);
-      const post = new THREE.Mesh(postGeo, woodLight);
-      post.position.set(rx, 0.6, sz);
-      deckGroup.add(post);
+    const sz = side === 0 ? W*0.28 : -W*0.28;
+    // Rail bar
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(L*0.8, 0.06, 0.05), redRail);
+    rail.position.set(0, 0.72, sz);
+    g.add(rail);
+
+    // Posts
+    for (let r = 0; r < 16; r++) {
+      const rx = (r/15 - 0.5) * L * 0.79;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 6), redRail);
+      post.position.set(rx, 0.58, sz);
+      g.add(post);
+    }
+
+    // Gold dot patterns on rails
+    for (let d = 0; d < 12; d++) {
+      const dx = (d/11 - 0.5) * L * 0.76;
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4), goldMat);
+      dot.position.set(dx, 0.75, sz);
+      g.add(dot);
     }
   }
-  
-  // Bow flag pole
-  const flagPoleGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 8);
-  const flagPole = new THREE.Mesh(flagPoleGeo, mastMat);
-  flagPole.position.set(4.6, 1.6, 0);
-  deckGroup.add(flagPole);
-  
-  // Small flag
-  const flagGeo = new THREE.PlaneGeometry(0.5, 0.3);
-  const flag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({ 
-    color: 0xCC0000, roughness: 0.4, side: THREE.DoubleSide 
-  }));
-  flag.position.set(4.75, 2.5, 0);
-  flag.rotation.z = 0.15;
-  flag.rotation.y = 0.2;
-  deckGroup.add(flag);
-  
-  return deckGroup;
+  return g;
 }
 
-// ============ ANCHOR ============
-function createAnchor() {
-  const anchorGroup = new THREE.Group();
-  
-  // Anchor shank
-  const shankGeo = new THREE.CylinderGeometry(0.06, 0.08, 1.5, 8);
-  const shank = new THREE.Mesh(shankGeo, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.8 }));
-  shank.position.set(3.8, -0.2, 1.0);
-  shank.rotation.z = 0.3;
-  anchorGroup.add(shank);
-  
-  // Anchor arms
-  const armGeo = new THREE.BoxGeometry(1.0, 0.06, 0.08);
-  const arm = new THREE.Mesh(armGeo, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.8 }));
-  arm.position.set(3.7, -0.9, 1.0);
-  arm.rotation.z = 0.3;
-  anchorGroup.add(arm);
-  
-  // Anchor ring
-  const ringGeo = new THREE.TorusGeometry(0.15, 0.04, 8, 8);
-  const ring = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.9 }));
-  ring.position.set(4.0, 0.35, 1.0);
-  anchorGroup.add(ring);
-  
-  return anchorGroup;
+// ======== FLAGS ========
+function createFlags() {
+  const g = new THREE.Group();
+
+  // Bow flag - large red
+  const bowPole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2, 8), mastMat);
+  bowPole.position.set(L*0.45, 1.6, 0);
+  g.add(bowPole);
+
+  const flagGeo = new THREE.PlaneGeometry(0.6, 0.35);
+  const bigRedFlag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({color:0xCC0000, roughness:0.4, side:THREE.DoubleSide}));
+  bigRedFlag.position.set(L*0.46, 2.5, 0);
+  bigRedFlag.rotation.z = 0.1;
+  g.add(bigRedFlag);
+
+  // "大明" flag (larger red)
+  const daMing = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.3), new THREE.MeshStandardMaterial({color:0xCC0000, roughness:0.4, side:THREE.DoubleSide}));
+  daMing.position.set(L*0.35, 2.6, 0.15);
+  daMing.rotation.z = 0.12;
+  daMing.rotation.y = 0.15;
+  g.add(daMing);
+
+  // "郑和" flag
+  const zhengHeFlag = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.28), new THREE.MeshStandardMaterial({color:0xBB0000, roughness:0.4, side:THREE.DoubleSide}));
+  zhengHeFlag.position.set(L*0.38, 2.5, -0.12);
+  zhengHeFlag.rotation.z = 0.08;
+  zhengHeFlag.rotation.y = -0.1;
+  g.add(zhengHeFlag);
+
+  return g;
 }
 
-// ============ WATER / GROUND ============
-function createBase() {
-  const baseGroup = new THREE.Group();
-  
-  // Subtle ground plane / water
-  const groundGeo = new THREE.CircleGeometry(8, 32);
-  const groundMat = new THREE.MeshStandardMaterial({ 
-    color: 0x0a1628, roughness: 0.9, metalness: 0.3, transparent: true, opacity: 0.4 
-  });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -2.0;
-  ground.receiveShadow = true;
-  baseGroup.add(ground);
-  
-  return baseGroup;
+// ======== ANCHOR & WINCH ========
+function createEquipment() {
+  const g = new THREE.Group();
+  const ironMat = new THREE.MeshStandardMaterial({color:0x333333, roughness:0.35, metalness:0.8});
+
+  // Anchor
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.3, 8), ironMat);
+  shank.position.set(L*0.38, -0.1, W*0.15);
+  shank.rotation.z = 0.25;
+  g.add(shank);
+
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.07), ironMat);
+  arm.position.set(L*0.37, -0.75, W*0.15);
+  arm.rotation.z = 0.25;
+  g.add(arm);
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 8), ironMat);
+  ring.position.set(L*0.4, 0.3, W*0.15);
+  g.add(ring);
+
+  // Winch (绞盘)
+  const winchBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.15, 8), hullAccent);
+  winchBase.position.set(L*0.1, 0.45, W*0.1);
+  g.add(winchBase);
+  const winchDrum = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.35, 8), mastMat);
+  winchDrum.position.set(L*0.1, 0.65, W*0.1);
+  g.add(winchDrum);
+
+  return g;
 }
 
-// ============ ASSEMBLE SHIP ============
-shipGroup.add(createHull());
-shipGroup.add(createDragonHead());
-shipGroup.add(createMasts());
-shipGroup.add(createSternCastle());
-shipGroup.add(createDeck());
-shipGroup.add(createAnchor());
+// Ground plane
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(8, 32),
+  new THREE.MeshStandardMaterial({color:0x0a1628, roughness:0.9, metalness:0.3, transparent:true, opacity:0.35})
+);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -2;
+ground.receiveShadow = true;
+scene.add(ground);
 
-scene.add(shipGroup);
-scene.add(createBase());
+// Assemble ship
+ship.add(createHull());
+ship.add(createDragonHead());
+ship.add(createMasts());
+ship.add(createCentralBuilding());
+ship.add(createSternPlatform());
+ship.add(createDeck());
+ship.add(createFlags());
+ship.add(createEquipment());
+scene.add(ship);
 
-// --- Particles (subtle sparkles / atmosphere) ---
-const particlesGeo = new THREE.BufferGeometry();
-const particlesCount = 200;
-const posArray = new Float32Array(particlesCount * 3);
-for (let i = 0; i < particlesCount * 3; i += 3) {
-  posArray[i] = (Math.random() - 0.5) * 18;
-  posArray[i + 1] = Math.random() * 8 - 1;
-  posArray[i + 2] = (Math.random() - 0.5) * 12;
-}
-particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-const particlesMat = new THREE.PointsMaterial({
-  size: 0.03,
-  color: 0xffd700,
-  transparent: true,
-  opacity: 0.5,
-  blending: THREE.AdditiveBlending,
-});
-const particles = new THREE.Points(particlesGeo, particlesMat);
+// Particles
+const pGeo = new THREE.BufferGeometry();
+const pArr = new Float32Array(200*3);
+for (let i=0;i<pArr.length;i+=3) { pArr[i]=(Math.random()-.5)*18; pArr[i+1]=Math.random()*8-1; pArr[i+2]=(Math.random()-.5)*12; }
+pGeo.setAttribute('position', new THREE.BufferAttribute(pArr,3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({size:0.03, color:0xffd700, transparent:true, opacity:0.45, blending:THREE.AdditiveBlending}));
 scene.add(particles);
 
-// --- Animation Loop ---
+// Animate
 const clock = new THREE.Clock();
-function animate() {
+(function animate() {
   requestAnimationFrame(animate);
-  
-  const delta = clock.getDelta();
-  const time = performance.now() * 0.001;
-  
+  const t = performance.now()*0.001;
   controls.update();
-  
-  // Subtle ship idle sway
-  shipGroup.rotation.z = Math.sin(time * 0.4) * 0.015;
-  shipGroup.position.y = Math.sin(time * 0.5) * 0.08;
-  
-  // Particles drift upward
-  particles.rotation.y += delta * 0.05;
-  
+  ship.rotation.z = Math.sin(t*0.4)*0.012;
+  ship.position.y = Math.sin(t*0.5)*0.06;
+  particles.rotation.y += clock.getDelta()*0.04;
   renderer.render(scene, camera);
-}
+})();
 
-animate();
-
-// --- Resize ---
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-console.log('🏴‍☠️ 郑和宝船 3D Viewer Ready');
+addEventListener('resize', () => { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 </script>
 </body>
 </html>
