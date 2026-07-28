@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>郑和宝船 - 3D Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; overflow: hidden; font-family: 'SimSun', 'Noto Serif SC', serif; }
+  canvas { display: block; }
+  #info {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    color: #d4a574; font-size: 28px; text-shadow: 0 0 20px rgba(212,165,116,0.5);
+    pointer-events: none; z-index: 10;
+  }
+  #subtitle {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    color: #8b7355; font-size: 14px; letter-spacing: 4px;
+    pointer-events: none; z-index: 10;
+  }
+  #controls {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    color: #888; font-size: 13px; pointer-events: none; z-index: 10;
+    text-align: center; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div id="info">郑 和 宝 船</div>
+<div id="subtitle">明 · 永 乐 年 间 · 下 西 洋</div>
+<div id="controls">🖱 拖拽旋转 &nbsp;|&nbsp; 📜 滚轮缩放 &nbsp;|&nbsp; 👆 右键平移</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- Scene Setup ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 15, 60);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 100);
+camera.position.set(8, 3, 14);
+camera.lookAt(0, 0.5, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.5, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3;
+controls.maxDistance = 25;
+controls.maxPolarAngle = Math.PI * 0.8;
+controls.update();
+
+// --- Lighting ---
+const ambientLight = new THREE.AmbientLight(0xffeedd, 0.8);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xfff5e8, 4.5);
+sunLight.position.set(12, 15, 8);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 60;
+sunLight.shadow.camera.left = -15;
+sunLight.shadow.camera.right = 15;
+sunLight.shadow.camera.top = 15;
+sunLight.shadow.camera.bottom = -5;
+sunLight.shadow.bias = -0.0001;
+scene.add(sunLight);
+
+const fillLight = new THREE.DirectionalLight(0x8899cc, 1.2);
+fillLight.position.set(-5, 2, -3);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+rimLight.position.set(0, 0, -8);
+scene.add(rimLight);
+
+const bottomLight = new THREE.DirectionalLight(0x334466, 0.6);
+bottomLight.position.set(0, -3, 0);
+scene.add(bottomLight);
+
+// --- Materials ---
+const woodDark = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.7, metalness: 0.05 });
+const woodMedium = new THREE.MeshStandardMaterial({ color: 0x7B4F2A, roughness: 0.65, metalness: 0.05 });
+const woodLight = new THREE.MeshStandardMaterial({ color: 0xA0724A, roughness: 0.6, metalness: 0.05 });
+const woodDeck = new THREE.MeshStandardMaterial({ color: 0x9B6B3D, roughness: 0.55, metalness: 0.03 });
+const sailMat = new THREE.MeshStandardMaterial({ color: 0xF5F0DD, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
+const sailRibMat = new THREE.MeshStandardMaterial({ color: 0xC4A86A, roughness: 0.7, metalness: 0.05 });
+const mastMat = new THREE.MeshStandardMaterial({ color: 0x4A2F10, roughness: 0.6, metalness: 0.05 });
+const redMat = new THREE.MeshStandardMaterial({ color: 0xC41E3A, roughness: 0.5, metalness: 0.1 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xDAA520, roughness: 0.35, metalness: 0.5 });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x2C1810, roughness: 0.55, metalness: 0.08 });
+const pillarMat = new THREE.MeshStandardMaterial({ color: 0xB22222, roughness: 0.45, metalness: 0.1 });
+const whiteMat = new THREE.MeshStandardMaterial({ color: 0xF8F0E0, roughness: 0.5, metalness: 0.05 });
+
+const shipGroup = new THREE.Group();
+
+// ============ HULL ============
+function createHull() {
+  const hullGroup = new THREE.Group();
+  
+  // Main hull body - elongated, curved shape
+  const hullLength = 10;
+  const hullWidth = 2.8;
+  const hullHeight = 0.9;
+  
+  // Bottom keel
+  const keelGeo = new THREE.BoxGeometry(hullLength * 0.95, 0.4, 0.5);
+  const keel = new THREE.Mesh(keelGeo, woodDark);
+  keel.position.y = -0.55;
+  keel.castShadow = true;
+  keel.receiveShadow = true;
+  hullGroup.add(keel);
+  
+  // Main hull body - wider in middle, narrower at ends
+  const hullBodyPoints = [];
+  const segments = 20;
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const x = (t - 0.5) * hullLength;
+    // Width profile: widest at center
+    const w = hullWidth * 0.5 * (1 - Math.pow(t * 2 - 1, 2) * 0.7);
+    // Height profile
+    const h = hullHeight * (1 - Math.pow(t * 2 - 1, 6) * 0.6);
+    hullBodyPoints.push(new THREE.Vector2(w, h));
+  }
+  
+  const hullBodyGeo = new THREE.LatheGeometry(hullBodyPoints, 32, 0, Math.PI * 2 * 0.5);
+  const hullBody = new THREE.Mesh(hullBodyGeo, woodMedium);
+  hullBody.rotation.z = -Math.PI / 2;
+  hullBody.scale.set(1, hullLength, 1);
+  hullBody.position.y = -0.3;
+  hullBody.castShadow = true;
+  hullBody.receiveShadow = true;
+  hullGroup.add(hullBody);
+  
+  // Use a simpler approach - extended box for hull main body
+  const hullMainGeo = new THREE.BoxGeometry(hullLength * 0.9, 0.7, hullWidth * 0.75, 4, 2, 4);
+  // Modify vertices for curved hull shape
+  const positions = hullMainGeo.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+    // Taper ends
+    const taperX = 1 - Math.abs(x / (hullLength * 0.45)) * 0.6;
+    // Curve bottom
+    const curveY = y < -0.2 ? -0.2 - (y + 0.2) * 0.5 * (1 - Math.abs(x / (hullLength * 0.45))) : y;
+    positions.setXYZ(i, x * taperX, curveY, z * (y < 0 ? 1 : 0.85));
+  }
+  hullMainGeo.computeVertexNormals();
+  const hullMain = new THREE.Mesh(hullMainGeo, woodMedium);
+  hullMain.position.y = -0.15;
+  hullMain.castShadow = true;
+  hullMain.receiveShadow = true;
+  hullGroup.add(hullMain);
+  
+  // Upper hull sides (bulwark)
+  const bulwarkGeo = new THREE.BoxGeometry(hullLength * 0.88, 0.5, hullWidth * 0.72, 4, 1, 2);
+  const bulwark = new THREE.Mesh(bulwarkGeo, woodLight);
+  bulwark.position.y = 0.3;
+  bulwark.castShadow = true;
+  bulwark.receiveShadow = true;
+  hullGroup.add(bulwark);
+  
+  // Bow prow (船首) - pointed front
+  const bowGeo = new THREE.ConeGeometry(0.35, 1.8, 8, 4);
+  const bow = new THREE.Mesh(bowGeo, woodMedium);
+  bow.rotation.x = Math.PI / 2;
+  bow.position.set(hullLength * 0.5, -0.2, 0);
+  bow.scale.set(1, 1, 0.7);
+  bow.castShadow = true;
+  hullGroup.add(bow);
+  
+  // Bow upper extension
+  const bowUpperGeo = new THREE.BoxGeometry(1.2, 0.3, 0.3);
+  const bowUpper = new THREE.Mesh(bowUpperGeo, woodLight);
+  bowUpper.position.set(hullLength * 0.48, 0.5, 0);
+  bowUpper.rotation.z = -0.2;
+  bowUpper.castShadow = true;
+  hullGroup.add(bowUpper);
+  
+  // Stern rudder (船舵)
+  const rudderGeo = new THREE.BoxGeometry(0.15, 2.2, 1.2);
+  const rudder = new THREE.Mesh(rudderGeo, woodDark);
+  rudder.position.set(-hullLength * 0.45, -1.2, 0);
+  rudder.castShadow = true;
+  hullGroup.add(rudder);
+  
+  return hullGroup;
+}
+
+// ============ DRAGON HEAD PROW ============
+function createDragonHead() {
+  const dragonGroup = new THREE.Group();
+  
+  // Neck
+  const neckGeo = new THREE.CylinderGeometry(0.22, 0.32, 1.0, 8);
+  const neck = new THREE.Mesh(neckGeo, redMat);
+  neck.rotation.x = -0.4;
+  neck.position.set(5.2, 0.6, 0);
+  neck.castShadow = true;
+  dragonGroup.add(neck);
+  
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.4, 8, 6);
+  const head = new THREE.Mesh(headGeo, redMat);
+  head.position.set(5.7, 1.0, 0);
+  head.scale.set(1.2, 0.9, 0.8);
+  head.castShadow = true;
+  dragonGroup.add(head);
+  
+  // Upper jaw
+  const jawGeo = new THREE.BoxGeometry(0.4, 0.12, 0.25);
+  const jaw = new THREE.Mesh(jawGeo, redMat);
+  jaw.position.set(6.0, 0.9, 0);
+  jaw.castShadow = true;
+  dragonGroup.add(jaw);
+  
+  // Lower jaw
+  const lowerJawGeo = new THREE.BoxGeometry(0.5, 0.1, 0.22);
+  const lowerJaw = new THREE.Mesh(lowerJawGeo, redMat);
+  lowerJaw.position.set(6.0, 0.72, -0.05);
+  lowerJaw.castShadow = true;
+  dragonGroup.add(lowerJaw);
+  
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  const leftEye = new THREE.Mesh(eyeGeo, goldMat);
+  leftEye.position.set(5.85, 1.1, 0.2);
+  dragonGroup.add(leftEye);
+  const rightEye = new THREE.Mesh(eyeGeo, goldMat);
+  rightEye.position.set(5.85, 1.1, -0.2);
+  dragonGroup.add(rightEye);
+  
+  // Horns
+  const hornGeo = new THREE.ConeGeometry(0.06, 0.5, 6);
+  const leftHorn = new THREE.Mesh(hornGeo, goldMat);
+  leftHorn.position.set(5.55, 1.3, 0.25);
+  leftHorn.rotation.z = 0.6;
+  leftHorn.rotation.x = 0.3;
+  dragonGroup.add(leftHorn);
+  const rightHorn = new THREE.Mesh(hornGeo, goldMat);
+  rightHorn.position.set(5.55, 1.3, -0.25);
+  rightHorn.rotation.z = 0.6;
+  rightHorn.rotation.x = -0.3;
+  dragonGroup.add(rightHorn);
+  
+  // Gold mane
+  for (let i = 0; i < 3; i++) {
+    const maneGeo = new THREE.BoxGeometry(0.15, 0.08, 0.3);
+    const mane = new THREE.Mesh(maneGeo, goldMat);
+    mane.position.set(5.3, 1.0, (i - 1) * 0.25);
+    mane.rotation.z = 0.5;
+    dragonGroup.add(mane);
+  }
+  
+  return dragonGroup;
+}
+
+// ============ MASTS AND SAILS ============
+function createMasts() {
+  const mastsGroup = new THREE.Group();
+  const hullLength = 10;
+  
+  // 9 masts positioned along the ship
+  const mastPositions = [];
+  const totalMasts = 9;
+  
+  for (let i = 0; i < totalMasts; i++) {
+    const t = i / (totalMasts - 1); // 0 (stern) to 1 (bow)
+    const x = (t - 0.5) * hullLength * 0.78; // position along ship
+    // Height profile: tallest near center, shorter at ends
+    const height = 4.5 * (1 - Math.pow(t - 0.5, 2) * 0.5);
+    mastPositions.push({ x, height, t });
+  }
+  
+  mastPositions.forEach((mp, index) => {
+    // Mast pole
+    const mastGeo = new THREE.CylinderGeometry(0.08, 0.1, mp.height, 8);
+    const mast = new THREE.Mesh(mastGeo, mastMat);
+    mast.position.set(mp.x, mp.height / 2 + 0.6, 0);
+    mast.castShadow = true;
+    mast.receiveShadow = true;
+    mastsGroup.add(mast);
+    
+    // Cross beams (yardarms) - Chinese junks have multiple
+    const yardCount = 3;
+    for (let j = 0; j < yardCount; j++) {
+      const yardY = 0.6 + mp.height * (0.25 + j * 0.3);
+      const yardWidth = 1.2 * (1 - Math.abs(index - 4) / totalMasts * 0.4);
+      const yardGeo = new THREE.CylinderGeometry(0.04, 0.04, yardWidth, 6);
+      const yard = new THREE.Mesh(yardGeo, mastMat);
+      yard.rotation.z = Math.PI / 2;
+      yard.position.set(mp.x, yardY, 0);
+      yard.castShadow = true;
+      mastsGroup.add(yard);
+    }
+    
+    // Sail - Chinese junk-style rectangular sail with battens
+    const sailWidth = 1.0 * (1 - Math.abs(index - 4) / totalMasts * 0.4);
+    const sailHeight = mp.height * 0.55;
+    const sailGeo = new THREE.PlaneGeometry(sailWidth, sailHeight, 4, 8);
+    
+    // Give sail slight billow
+    const sailPositions = sailGeo.attributes.position;
+    for (let k = 0; k < sailPositions.count; k++) {
+      const sx = sailPositions.getX(k);
+      const sy = sailPositions.getY(k);
+      sailPositions.setZ(k, Math.abs(sx) * 0.12 + sy * 0.02);
+    }
+    sailGeo.computeVertexNormals();
+    
+    const sail = new THREE.Mesh(sailGeo, sailMat);
+    sail.position.set(mp.x, 0.6 + sailHeight / 2 + 0.4, 0);
+    sail.castShadow = true;
+    sail.receiveShadow = true;
+    mastsGroup.add(sail);
+    
+    // Horizontal battens on sail (bamboo strips)
+    const battenCount = 6;
+    for (let b = 0; b < battenCount; b++) {
+      const battenY = 0.6 + 0.4 + (b + 0.5) * (sailHeight / battenCount);
+      const battenGeo = new THREE.BoxGeometry(sailWidth * 1.05, 0.03, 0.04);
+      const batten = new THREE.Mesh(battenGeo, sailRibMat);
+      batten.position.set(mp.x, battenY, 0.01);
+      batten.castShadow = true;
+      mastsGroup.add(batten);
+    }
+  });
+  
+  return mastsGroup;
+}
+
+// ============ STERN CASTLE (尾楼) ============
+function createSternCastle() {
+  const castleGroup = new THREE.Group();
+  
+  // Platform base
+  const baseGeo = new THREE.BoxGeometry(2.2, 0.3, 2.4);
+  const base = new THREE.Mesh(baseGeo, woodDark);
+  base.position.set(-4.0, 0.5, 0);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  castleGroup.add(base);
+  
+  // Three tiers of the stern castle
+  const tiers = [
+    { y: 0.8, w: 2.0, d: 2.2, h: 1.4 },
+    { y: 1.7, w: 1.7, d: 1.9, h: 1.3 },
+    { y: 2.55, w: 1.4, d: 1.6, h: 1.2 },
+  ];
+  
+  tiers.forEach((tier, ti) => {
+    // Walls
+    const wallGeo = new THREE.BoxGeometry(tier.w, tier.h, tier.d);
+    const wall = new THREE.Mesh(wallGeo, woodMedium);
+    wall.position.set(-4.0, tier.y + tier.h / 2, 0);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    castleGroup.add(wall);
+    
+    // Roof platform
+    const roofPlatGeo = new THREE.BoxGeometry(tier.w + 0.3, 0.12, tier.d + 0.3);
+    const roofPlat = new THREE.Mesh(roofPlatGeo, woodLight);
+    roofPlat.position.set(-4.0, tier.y + tier.h + 0.06, 0);
+    castleGroup.add(roofPlat);
+    
+    // Chinese-style curved roof (eaves)
+    const roofThickness = 0.15;
+    const roofOverhang = 0.6;
+    const roofGeo = new THREE.BoxGeometry(tier.w + roofOverhang * 2, roofThickness, tier.d + roofOverhang * 2);
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.set(-4.0, tier.y + tier.h + 0.25, 0);
+    roof.castShadow = true;
+    roof.receiveShadow = true;
+    castleGroup.add(roof);
+    
+    // Roof curve - upturned eaves (飞檐)
+    for (let c = 0; c < 4; c++) {
+      const cornerAngle = (c * Math.PI) / 2 + Math.PI / 4;
+      const cx = Math.cos(cornerAngle) * (tier.w / 2 + roofOverhang * 0.7);
+      const cz = Math.sin(cornerAngle) * (tier.d / 2 + roofOverhang * 0.7);
+      const eaveGeo = new THREE.ConeGeometry(0.15, 0.35, 6);
+      const eave = new THREE.Mesh(eaveGeo, roofMat);
+      eave.position.set(-4.0 + cx, tier.y + tier.h + 0.35, cz);
+      eave.rotation.z = Math.PI;
+      eave.castShadow = true;
+      castleGroup.add(eave);
+    }
+    
+    // Red pillars on corners
+    for (let p = 0; p < 4; p++) {
+      const px = (p % 2 === 0 ? -1 : 1) * tier.w / 2 * 0.85;
+      const pz = (p < 2 ? -1 : 1) * tier.d / 2 * 0.85;
+      const pillarGeo = new THREE.CylinderGeometry(0.06, 0.06, tier.h - 0.05, 6);
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      pillar.position.set(-4.0 + px, tier.y + tier.h / 2, pz);
+      pillar.castShadow = true;
+      castleGroup.add(pillar);
+    }
+    
+    // Decorative railings on each tier
+    const railHeight = 0.15;
+    for (let side = 0; side < 2; side++) {
+      const sz = side === 0 ? tier.d / 2 + 0.05 : -(tier.d / 2 + 0.05);
+      const railGeo = new THREE.BoxGeometry(tier.w * 0.9, railHeight, 0.05);
+      const rail = new THREE.Mesh(railGeo, woodLight);
+      rail.position.set(-4.0, tier.y + 0.15, sz);
+      castleGroup.add(rail);
+    }
+    for (let side = 0; side < 2; side++) {
+      const sx = side === 0 ? -4.0 + tier.w / 2 + 0.05 : -4.0 - tier.w / 2 - 0.05;
+      const railGeo = new THREE.BoxGeometry(0.05, railHeight, tier.d * 0.9);
+      const rail = new THREE.Mesh(railGeo, woodLight);
+      rail.position.set(sx, tier.y + 0.15, 0);
+      castleGroup.add(rail);
+    }
+  });
+  
+  // Top finial / decoration
+  const finialGeo = new THREE.ConeGeometry(0.12, 0.5, 6);
+  const finial = new THREE.Mesh(finialGeo, goldMat);
+  finial.position.set(-4.0, 4.05, 0);
+  finial.castShadow = true;
+  castleGroup.add(finial);
+  
+  return castleGroup;
+}
+
+// ============ DECK DETAILS ============
+function createDeck() {
+  const deckGroup = new THREE.Group();
+  const hullLength = 10;
+  const hullWidth = 2.8;
+  
+  // Main deck
+  const deckGeo = new THREE.BoxGeometry(hullLength * 0.85, 0.08, hullWidth * 0.6);
+  const deck = new THREE.Mesh(deckGeo, woodDeck);
+  deck.position.y = 0.45;
+  deck.receiveShadow = true;
+  deckGroup.add(deck);
+  
+  // Deck planks (visual detail)
+  for (let i = 0; i < 15; i++) {
+    const px = (i / 14 - 0.5) * hullLength * 0.82;
+    const plankGeo = new THREE.BoxGeometry(hullLength * 0.82 / 15 * 0.9, 0.01, hullWidth * 0.55);
+    const plank = new THREE.Mesh(plankGeo, woodDeck);
+    plank.position.set(px, 0.5, 0);
+    deckGroup.add(plank);
+  }
+  
+  // Side railings
+  for (let side = 0; side < 2; side++) {
+    const sz = side === 0 ? hullWidth * 0.3 : -hullWidth * 0.3;
+    const railGeo = new THREE.BoxGeometry(hullLength * 0.82, 0.08, 0.06);
+    const rail = new THREE.Mesh(railGeo, woodLight);
+    rail.position.set(0, 0.75, sz);
+    deckGroup.add(rail);
+    
+    // Railing posts
+    for (let r = 0; r < 18; r++) {
+      const rx = (r / 17 - 0.5) * hullLength * 0.81;
+      const postGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6);
+      const post = new THREE.Mesh(postGeo, woodLight);
+      post.position.set(rx, 0.6, sz);
+      deckGroup.add(post);
+    }
+  }
+  
+  // Bow flag pole
+  const flagPoleGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 8);
+  const flagPole = new THREE.Mesh(flagPoleGeo, mastMat);
+  flagPole.position.set(4.6, 1.6, 0);
+  deckGroup.add(flagPole);
+  
+  // Small flag
+  const flagGeo = new THREE.PlaneGeometry(0.5, 0.3);
+  const flag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({ 
+    color: 0xCC0000, roughness: 0.4, side: THREE.DoubleSide 
+  }));
+  flag.position.set(4.75, 2.5, 0);
+  flag.rotation.z = 0.15;
+  flag.rotation.y = 0.2;
+  deckGroup.add(flag);
+  
+  return deckGroup;
+}
+
+// ============ ANCHOR ============
+function createAnchor() {
+  const anchorGroup = new THREE.Group();
+  
+  // Anchor shank
+  const shankGeo = new THREE.CylinderGeometry(0.06, 0.08, 1.5, 8);
+  const shank = new THREE.Mesh(shankGeo, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.8 }));
+  shank.position.set(3.8, -0.2, 1.0);
+  shank.rotation.z = 0.3;
+  anchorGroup.add(shank);
+  
+  // Anchor arms
+  const armGeo = new THREE.BoxGeometry(1.0, 0.06, 0.08);
+  const arm = new THREE.Mesh(armGeo, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.8 }));
+  arm.position.set(3.7, -0.9, 1.0);
+  arm.rotation.z = 0.3;
+  anchorGroup.add(arm);
+  
+  // Anchor ring
+  const ringGeo = new THREE.TorusGeometry(0.15, 0.04, 8, 8);
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.9 }));
+  ring.position.set(4.0, 0.35, 1.0);
+  anchorGroup.add(ring);
+  
+  return anchorGroup;
+}
+
+// ============ WATER / GROUND ============
+function createBase() {
+  const baseGroup = new THREE.Group();
+  
+  // Subtle ground plane / water
+  const groundGeo = new THREE.CircleGeometry(8, 32);
+  const groundMat = new THREE.MeshStandardMaterial({ 
+    color: 0x0a1628, roughness: 0.9, metalness: 0.3, transparent: true, opacity: 0.4 
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -2.0;
+  ground.receiveShadow = true;
+  baseGroup.add(ground);
+  
+  return baseGroup;
+}
+
+// ============ ASSEMBLE SHIP ============
+shipGroup.add(createHull());
+shipGroup.add(createDragonHead());
+shipGroup.add(createMasts());
+shipGroup.add(createSternCastle());
+shipGroup.add(createDeck());
+shipGroup.add(createAnchor());
+
+scene.add(shipGroup);
+scene.add(createBase());
+
+// --- Particles (subtle sparkles / atmosphere) ---
+const particlesGeo = new THREE.BufferGeometry();
+const particlesCount = 200;
+const posArray = new Float32Array(particlesCount * 3);
+for (let i = 0; i < particlesCount * 3; i += 3) {
+  posArray[i] = (Math.random() - 0.5) * 18;
+  posArray[i + 1] = Math.random() * 8 - 1;
+  posArray[i + 2] = (Math.random() - 0.5) * 12;
+}
+particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+const particlesMat = new THREE.PointsMaterial({
+  size: 0.03,
+  color: 0xffd700,
+  transparent: true,
+  opacity: 0.5,
+  blending: THREE.AdditiveBlending,
+});
+const particles = new THREE.Points(particlesGeo, particlesMat);
+scene.add(particles);
+
+// --- Animation Loop ---
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  
+  const delta = clock.getDelta();
+  const time = performance.now() * 0.001;
+  
+  controls.update();
+  
+  // Subtle ship idle sway
+  shipGroup.rotation.z = Math.sin(time * 0.4) * 0.015;
+  shipGroup.position.y = Math.sin(time * 0.5) * 0.08;
+  
+  // Particles drift upward
+  particles.rotation.y += delta * 0.05;
+  
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// --- Resize ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+console.log('🏴‍☠️ 郑和宝船 3D Viewer Ready');
+</script>
+</body>
+</html>
