@@ -3,50 +3,654 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>郑和宝船 · Three.js 程序化重建</title>
+  <title>大明郑和宝船 · 3D 数字沙盘展示</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0d1117; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
-    #app { width: 100%; height: 100%; }
-    canvas { display: block; }
-    #hud {
-      position: fixed; top: 16px; left: 16px; z-index: 10;
-      background: rgba(13, 17, 23, 0.82); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px; padding: 12px 16px; color: #e6edf3; backdrop-filter: blur(6px);
-      max-width: 280px; pointer-events: none;
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #050b14; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #fff; }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+    
+    /* HUD Header */
+    #hud-top {
+      position: absolute; top: 20px; left: 24px; z-index: 10;
+      background: rgba(10, 16, 26, 0.75); border: 1px solid rgba(212, 175, 55, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(212, 175, 55, 0.15);
+      border-radius: 12px; padding: 18px 24px; backdrop-filter: blur(12px);
+      max-width: 380px; pointer-events: auto;
     }
-    #hud h1 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-    #hud p { font-size: 12px; color: #8b949e; line-height: 1.6; }
-    #hud .tag {
-      display: inline-block; margin-top: 6px; font-size: 11px; color: #d29922;
-      border: 1px solid rgba(210,153,34,0.4); border-radius: 4px; padding: 1px 6px; margin-right: 4px;
+    #hud-top h1 { font-size: 22px; font-weight: 700; color: #f3e5ab; letter-spacing: 2px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    #hud-top h1 span { font-size: 13px; font-weight: 400; color: #d4af37; background: rgba(212,175,55,0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(212,175,55,0.3); }
+    #hud-top p { font-size: 13px; color: #a0aec0; line-height: 1.6; margin-bottom: 12px; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { font-size: 11px; padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #e2e8f0; }
+
+    /* Part Detail Info Panel */
+    #info-panel {
+      position: absolute; top: 20px; right: 24px; z-index: 10;
+      background: rgba(10, 16, 26, 0.85); border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 12px; padding: 20px; backdrop-filter: blur(12px);
+      width: 320px; display: none; pointer-events: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      transform: translateY(-10px); transition: all 0.3s ease;
     }
+    #info-panel.active { display: block; transform: translateY(0); }
+    #info-panel .close-btn { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #a0aec0; font-size: 18px; cursor: pointer; }
+    #info-panel .close-btn:hover { color: #fff; }
+    #info-panel h3 { font-size: 17px; color: #f3e5ab; margin-bottom: 8px; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 6px; }
+    #info-panel p { font-size: 13px; color: #cbd5e0; line-height: 1.6; }
+
+    /* Bottom Control Bar */
     #controls {
-      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
-      display: flex; gap: 8px; background: rgba(13,17,23,0.82); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px; padding: 8px 12px; backdrop-filter: blur(6px);
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10;
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(10, 16, 26, 0.85); border: 1px solid rgba(212, 175, 55, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      border-radius: 40px; padding: 8px 20px; backdrop-filter: blur(12px);
     }
-    #controls button {
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e6edf3;
-      border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; transition: all 0.2s;
+    .ctrl-btn {
+      background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; gap: 6px;
     }
-    #controls button:hover { background: rgba(255,255,255,0.16); }
-    #controls button.active { background: rgba(56,139,253,0.4); border-color: #388bfd; }
+    .ctrl-btn:hover { background: rgba(212, 175, 55, 0.25); border-color: #d4af37; color: #fff; transform: translateY(-2px); }
+    .ctrl-btn.active { background: #d4af37; border-color: #d4af37; color: #0f172a; font-weight: 700; }
+    
+    .slider-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #cbd5e0; padding: 0 8px; }
+    .slider-group input[type="range"] { accent-color: #d4af37; cursor: pointer; }
+
+    /* Loading Overlay */
+    #loading {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
+      background: #050b14; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      transition: opacity 0.6s ease;
+    }
+    .spinner { width: 50px; height: 50px; border: 3px solid rgba(212,175,55,0.2); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s infinite linear; margin-bottom: 16px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #loading p { font-size: 15px; color: #f3e5ab; letter-spacing: 2px; }
   </style>
-  <script type="module" crossorigin src="./assets/index-CDc9GDPl.js"></script>
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-  <div id="app"></div>
-  <div id="hud">
-    <h1>⚓ 郑和宝船 · Treasure Ship</h1>
-    <p>福船型 · 3 桅 9 帆 · 三层歇山顶楼阁 · 金龙头</p>
-    <span class="tag">大明</span><span class="tag">郑和</span>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>正在构建郑和宝船 3D 高精细节模型...</p>
   </div>
+
+  <div id="canvas-container"></div>
+
+  <div id="hud-top">
+    <h1>郑和宝船 <span>中西合璧旗舰</span></h1>
+    <p>基于最新重绘插画 3D 还原：福船V型巨型船体、龙头金雕首像、中式竹筋硬帆与盖伦式绳网索具、尾楼歇山顶殿堂阁楼。</p>
+    <div class="tags">
+      <span class="tag">大明巨舰</span>
+      <span class="tag">立体金龙</span>
+      <span class="tag">双层侧舷火炮</span>
+      <span class="tag">飞檐斗拱</span>
+      <span class="tag">程序化PBR</span>
+    </div>
+  </div>
+
+  <div id="info-panel">
+    <button class="close-btn" onclick="closeInfoPanel()">×</button>
+    <h3 id="info-title">部件名称</h3>
+    <p id="info-desc">部件详细介绍描述...</p>
+  </div>
+
   <div id="controls">
-    <button id="btn-rotate">旋转</button>
-    <button id="btn-wire">线框</button>
-    <button id="btn-explode">分解</button>
-    <button id="btn-reset">复位</button>
+    <button class="ctrl-btn" id="btn-rotate" onclick="toggleAutoRotate()">🔄 自动旋转</button>
+    <button class="ctrl-btn" id="btn-wireframe" onclick="toggleWireframe()">🕸️ 线框模式</button>
+    <div class="slider-group">
+      <span>💥 结构爆炸</span>
+      <input type="range" id="explode-slider" min="0" max="1" step="0.01" value="0" oninput="onExplodeChange(this.value)">
+    </div>
+    <button class="ctrl-btn" id="btn-reset" onclick="resetCamera()">🎯 复位视角</button>
   </div>
+
+  <script>
+    // --- 1. Scene, Camera, Renderer Setup ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a101d);
+    scene.fog = new THREE.FogExp2(0x0a101d, 0.003);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1000);
+    camera.position.set(45, 25, 55);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go below water surface
+    controls.minDistance = 10;
+    controls.maxDistance = 180;
+    controls.target.set(0, 8, 0);
+
+    // --- 2. Lighting System ---
+    const ambientLight = new THREE.AmbientLight(0xdce6f5, 0.85);
+    scene.add(ambientLight);
+
+    // Sun / Warm Main Light (Sunset vibe)
+    const sunLight = new THREE.DirectionalLight(0xfff2d1, 2.5);
+    sunLight.position.set(60, 45, 40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 200;
+    const shadowSize = 50;
+    sunLight.shadow.camera.left = -shadowSize;
+    sunLight.shadow.camera.right = shadowSize;
+    sunLight.shadow.camera.top = shadowSize;
+    sunLight.shadow.camera.bottom = -shadowSize;
+    scene.add(sunLight);
+
+    // Fill Light & Rim Light
+    const fillLight = new THREE.DirectionalLight(0x759ac5, 1.0);
+    fillLight.position.set(-50, 30, -30);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xd4af37, 1.2);
+    rimLight.position.set(0, 20, -60);
+    scene.add(rimLight);
+
+    // --- 3. Dynamic Ocean Sea Surface ---
+    const oceanGeometry = new THREE.PlaneGeometry(500, 500, 128, 128);
+    const oceanMaterial = new THREE.MeshStandardMaterial({
+      color: 0x0c2540,
+      roughness: 0.15,
+      metalness: 0.85,
+      flatShading: true
+    });
+    const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.y = 0;
+    scene.add(ocean);
+
+    // Save initial vertex positions for wave animation
+    const wavePos = oceanGeometry.attributes.position;
+    const initialWaveY = new Float32Array(wavePos.count);
+    for (let i = 0; i < wavePos.count; i++) {
+      initialWaveY[i] = wavePos.getY(i);
+    }
+
+    // --- 4. Materials Palette ---
+    const woodHullMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.75, metalness: 0.1 });
+    const woodDeckMat = new THREE.MeshStandardMaterial({ color: 0x6e5239, roughness: 0.8, metalness: 0.05 });
+    const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x221610, roughness: 0.85, metalness: 0.1 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xe5ba36, roughness: 0.3, metalness: 0.9 });
+    const redVermilionMat = new THREE.MeshStandardMaterial({ color: 0xa82828, roughness: 0.5, metalness: 0.1 });
+    const bluePaintMat = new THREE.MeshStandardMaterial({ color: 0x1d5a6c, roughness: 0.6, metalness: 0.1 });
+    const yellowTileMat = new THREE.MeshStandardMaterial({ color: 0xebad26, roughness: 0.25, metalness: 0.3 });
+    const sailMat = new THREE.MeshStandardMaterial({ color: 0x8a3a34, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide });
+    const sailCreamMat = new THREE.MeshStandardMaterial({ color: 0xcbb799, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide });
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0x5c4d3c, roughness: 0.9, metalness: 0.0 });
+    const cannonMetalMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.4, metalness: 0.85 });
+
+    // Component tracking list for Explode & Click
+    const shipParts = [];
+    const mainShipGroup = new THREE.Group();
+    scene.add(mainShipGroup);
+
+    function registerPart(mesh, name, description, explodeDir) {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = {
+        name: name,
+        description: description,
+        origPos: mesh.position.clone(),
+        explodeDir: explodeDir || new THREE.Vector3(0, 0, 0)
+      };
+      shipParts.push(mesh);
+      return mesh;
+    }
+
+    // --- 5. Build Procedural Detailed Treasure Ship Model ---
+
+    // (A) HULL SYSTEM (福船V型船体 + 拼板 + 侧舷护木)
+    const hullGroup = new THREE.Group();
+    hullGroup.position.set(0, 0, 0);
+    mainShipGroup.add(hullGroup);
+
+    // Create Main V-shaped Hull using ExtrudeGeometry
+    const hullShape = new THREE.Shape();
+    // Profile from Stern (Z = -22) to Bow (Z = +26)
+    // Z is length axis, Y is height, X is width
+    const hullLength = 52;
+    const hullWidth = 14;
+    const hullHeight = 11;
+
+    // Outer hull shell using lofted box/mesh layers
+    const hullSegments = 16;
+    const hullGeo = new THREE.BufferGeometry();
+    const vertices = [];
+    const indices = [];
+    const uvs = [];
+
+    // Build custom curved hull mesh
+    for (let i = 0; i <= hullSegments; i++) {
+      const t = i / hullSegments; // 0 to 1 along length Z (-26 to +26)
+      const z = (t - 0.5) * hullLength;
+      
+      // Width profile (tapered at bow Z>0, wide at stern Z<0)
+      let wFactor = Math.sin(t * Math.PI * 0.85);
+      if (t > 0.8) wFactor *= (1 - (t - 0.8) * 1.8); // Bow point
+      const w = hullWidth * 0.5 * (0.35 + 0.65 * wFactor);
+
+      // Bottom V curve
+      const yBottom = Math.pow(Math.abs(t - 0.4), 2) * 3 + 1.5;
+      const yTop = yBottom + hullHeight * (0.85 + 0.3 * Math.pow(t - 0.5, 2));
+
+      // 4 points per cross section: Bottom-Center, Bottom-Right, Top-Right, Top-Left, Bottom-Left
+      vertices.push(
+        0, yBottom, z,          // 0: Bottom keel
+        w, yTop, z,             // 1: Top Right
+        w * 0.4, yBottom + 1, z, // 2: Mid V Right
+        -w * 0.4, yBottom + 1, z,// 3: Mid V Left
+        -w, yTop, z             // 4: Top Left
+      );
+    }
+
+    // Connect indices
+    for (let i = 0; i < hullSegments; i++) {
+      const b = i * 5;
+      const n = (i + 1) * 5;
+      // Right side quad
+      indices.push(b+0, b+2, n+2); indices.push(b+0, n+2, n+0);
+      indices.push(b+2, b+1, n+1); indices.push(b+2, n+1, n+2);
+      // Left side quad
+      indices.push(b+0, n+3, b+3); indices.push(b+0, n+0, n+3);
+      indices.push(b+3, n+4, b+4); indices.push(b+3, n+3, n+4);
+    }
+
+    hullGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    hullGeo.setIndex(indices);
+    hullGeo.computeVertexNormals();
+
+    const mainHullMesh = new THREE.Mesh(hullGeo, woodHullMat);
+    hullGroup.add(mainHullMesh);
+    registerPart(mainHullMesh, "福船基底船体", "典型中式福船线型：吃水深、首尖尾宽、V型底抗浪，配备重叠木板结构。", new THREE.Vector3(0, -2, 0));
+
+    // Hull Ribs & Horizontal Wales (船侧加固护木条)
+    for (let yOffset of [4.5, 7.0, 9.5]) {
+      const waleGeo = new THREE.BoxGeometry(hullWidth + 0.6, 0.4, hullLength - 2);
+      const waleMesh = new THREE.Mesh(waleGeo, darkWoodMat);
+      waleMesh.position.set(0, yOffset, 0);
+      hullGroup.add(waleMesh);
+    }
+
+    // Gun Ports & Cannons (两排火炮门)
+    const cannonGroup = new THREE.Group();
+    hullGroup.add(cannonGroup);
+    for (let z = -12; z <= 12; z += 5) {
+      for (let side of [-1, 1]) {
+        for (let yLevel of [5.5, 8.2]) {
+          // Gun port flap
+          const portCover = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.9, 0.9), redVermilionMat);
+          const xPos = side * (hullWidth * 0.46);
+          portCover.position.set(xPos, yLevel, z);
+          cannonGroup.add(portCover);
+
+          // Cannon Barrel
+          const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 1.4, 12), cannonMetalMat);
+          cannon.rotation.z = Math.PI / 2;
+          cannon.position.set(xPos + side * 0.4, yLevel - 0.1, z);
+          cannonGroup.add(cannon);
+        }
+      }
+    }
+    registerPart(cannonGroup, "侧舷双层火炮群", "左右侧舷两层共计数十门火炮，配有红色防护炮门盖板，提供强大火力。", new THREE.Vector3(0, 0, 0));
+
+    // Deck Surface (甲板平面)
+    const deckGeo = new THREE.BoxGeometry(hullWidth - 1, 0.6, hullLength - 4);
+    const deckMesh = new THREE.Mesh(deckGeo, woodDeckMat);
+    deckMesh.position.set(0, 10.2, -1);
+    hullGroup.add(deckMesh);
+    registerPart(deckMesh, "主甲板层", "平整坚固的中式木质主甲板，连接船首与尾楼走道。", new THREE.Vector3(0, 0, 0));
+
+    // (B) BOW ORNAMENTS & DRAGON HEAD (船首立体金龙雕像 + 铁锚)
+    const bowGroup = new THREE.Group();
+    bowGroup.position.set(0, 10, 24);
+    mainShipGroup.add(bowGroup);
+
+    // Golden Dragon Head (精雕金龙)
+    const dragonBase = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.0, 3.5), goldMat);
+    dragonBase.position.set(0, 1.2, 1.5);
+    bowGroup.add(dragonBase);
+
+    // Dragon snout & jaws
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.8, 4), goldMat);
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, 1.6, 3.8);
+    bowGroup.add(snout);
+
+    // Horns (双龙角)
+    for (let side of [-1, 1]) {
+      const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.35, 2.2, 8), goldMat);
+      horn.rotation.x = -Math.PI / 4;
+      horn.rotation.z = side * Math.PI / 6;
+      horn.position.set(side * 0.8, 2.8, 2.2);
+      bowGroup.add(horn);
+    }
+    registerPart(bowGroup, "船首立体金龙首像", "雕刻威严的立体帝王金龙首，龙须张扬，下方连结铁锚链，象征皇家远航权威。", new THREE.Vector3(0, 1, 4));
+
+    // Anchors & Chains (四爪铁锚)
+    for (let side of [-1, 1]) {
+      const anchor = new THREE.Group();
+      const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.0, 8), cannonMetalMat);
+      anchor.add(shank);
+      const fluke = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 8, 16, Math.PI), cannonMetalMat);
+      fluke.rotation.x = Math.PI / 2;
+      fluke.position.y = -1.2;
+      anchor.add(fluke);
+      anchor.position.set(side * 5.2, -1.5, 1.5);
+      bowGroup.add(anchor);
+    }
+
+    // (C) STERN CASTLE & THREE-TIER PAVILION (尾楼3层平台 + 歇山顶殿堂阁楼)
+    const sternGroup = new THREE.Group();
+    sternGroup.position.set(0, 10.5, -16);
+    mainShipGroup.add(sternGroup);
+
+    // Tier 1 & 2 Platform Bases (一、二层高台)
+    const tier1Base = new THREE.Mesh(new THREE.BoxGeometry(13.2, 4.0, 14.0), woodHullMat);
+    tier1Base.position.set(0, 2.0, 0);
+    sternGroup.add(tier1Base);
+
+    const tier2Base = new THREE.Mesh(new THREE.BoxGeometry(11.5, 3.5, 11.0), redVermilionMat);
+    tier2Base.position.set(0, 5.75, -0.5);
+    sternGroup.add(tier2Base);
+
+    // Red Columns & Balconies (朱红立柱与外廊栏杆)
+    for (let z of [-4, 0, 4]) {
+      for (let side of [-1, 1]) {
+        const column = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 3.5, 12), redVermilionMat);
+        column.position.set(side * 5.2, 5.75, z);
+        sternGroup.add(column);
+      }
+    }
+
+    // Top Pavilion Hall (三层主殿)
+    const hallBody = new THREE.Mesh(new THREE.BoxGeometry(8.5, 3.2, 8.0), bluePaintMat);
+    hallBody.position.set(0, 9.1, -0.5);
+    sternGroup.add(hallBody);
+
+    // Dougong Brackets (斗拱结构层)
+    const dougongGroup = new THREE.Group();
+    for (let x = -3.8; x <= 3.8; x += 1.2) {
+      for (let side of [-1, 1]) {
+        const block = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.6), goldMat);
+        block.position.set(x, 10.8, side * 3.8);
+        dougongGroup.add(block);
+      }
+    }
+    sternGroup.add(dougongGroup);
+
+    // Xieshan Curved Roof (歇山顶重檐飞檐)
+    function createXieshanRoof(width, depth, height) {
+      const roofGroup = new THREE.Group();
+      // Main roof slope
+      const roofGeo = new THREE.ConeGeometry(Math.max(width, depth) * 0.75, height, 4);
+      roofGeo.rotateY(Math.PI / 4);
+      const roofMesh = new THREE.Mesh(roofGeo, yellowTileMat);
+      roofGroup.add(roofMesh);
+
+      // Eaves Ridge (飞檐翘角)
+      for (let corner of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const eaveTip = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.5, 4), goldMat);
+        eaveTip.rotation.x = corner[1] * Math.PI / 4;
+        eaveTip.rotation.z = -corner[0] * Math.PI / 4;
+        eaveTip.position.set(corner[0] * (width * 0.52), -height * 0.3, corner[1] * (depth * 0.52));
+        roofGroup.add(eaveTip);
+      }
+      return roofGroup;
+    }
+
+    const lowerRoof = createXieshanRoof(11.0, 10.0, 2.2);
+    lowerRoof.position.set(0, 11.2, -0.5);
+    sternGroup.add(lowerRoof);
+
+    const upperRoof = createXieshanRoof(8.5, 7.5, 2.6);
+    upperRoof.position.set(0, 13.2, -0.5);
+    sternGroup.add(upperRoof);
+
+    registerPart(sternGroup, "船尾三层歇山顶殿堂楼阁", "尾楼连升3层，顶层为双檐歇山顶建筑，配备黄琉璃瓦、斗拱层、朱红立柱与观景外廊。", new THREE.Vector3(0, 4, -5));
+
+    // Wooden Open-work Rudder (船尾悬挂木舵)
+    const rudderGroup = new THREE.Group();
+    const rudderBlade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 8.0, 3.5), darkWoodMat);
+    rudderBlade.position.set(0, 4.0, -24.5);
+    rudderGroup.add(rudderBlade);
+    mainShipGroup.add(rudderGroup);
+    registerPart(rudderGroup, "尾部开孔悬挂木舵", "巨大的中式悬挂木舵，舵叶上有平衡开孔，可通过绞盘升降调节水深。", new THREE.Vector3(0, -1, -4));
+
+    // (D) MASTS, SAILS & RIGGING (桅杆、硬帆与索具系统)
+    const mastsGroup = new THREE.Group();
+    mainShipGroup.add(mastsGroup);
+
+    // Mast configurations: [X, Z, Height, Radius, SailColor]
+    const mastConfigs = [
+      { name: "船首斜桅", pos: [0, 20, 22, 0.4, 0.25], rotX: -Math.PI / 8, sailType: 'cream' },
+      { name: "前桅杆", pos: [0, 10, 32, 0.55, 0.3], rotX: 0, sailType: 'red' },
+      { name: "主桅杆", pos: [0, -3, 40, 0.7, 0.4], rotX: 0, sailType: 'red' },
+      { name: "中桅杆", pos: [0, -12, 34, 0.6, 0.35], rotX: 0, sailType: 'red' },
+      { name: "尾桅杆", pos: [0, -21, 24, 0.45, 0.25], rotX: Math.PI / 12, sailType: 'cream' }
+    ];
+
+    const sailsList = []; // For wind oscillation animation
+
+    mastConfigs.forEach((config, idx) => {
+      const mastSubGroup = new THREE.Group();
+      mastSubGroup.position.set(config.pos[0], 10, config.pos[1]);
+      if (config.rotX) mastSubGroup.rotation.x = config.rotX;
+      mastsGroup.add(mastSubGroup);
+
+      // Wooden Mast Pole
+      const mastHeight = config.pos[2];
+      const mastPole = new THREE.Mesh(new THREE.CylinderGeometry(config.pos[4], config.pos[3], mastHeight, 16), darkWoodMat);
+      mastPole.position.y = mastHeight / 2;
+      mastSubGroup.add(mastPole);
+
+      // Crow's Nest / Trestletree (瞭望斗𪤗)
+      const nest = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 0.8, 12), woodDeckMat);
+      nest.position.y = mastHeight * 0.65;
+      mastSubGroup.add(nest);
+
+      // Battened Junk Sail (鼓起的中式硬帆面)
+      const sailW = mastHeight * 0.42;
+      const sailH = mastHeight * 0.6;
+      const sailGeo = new THREE.PlaneGeometry(sailW, sailH, 16, 16);
+      
+      // Curve sail to simulate wind bulge (顺风鼓起)
+      const posAttr = sailGeo.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        const u = (posAttr.getX(i) / sailW) + 0.5; // 0 to 1
+        const v = (posAttr.getY(i) / sailH) + 0.5;
+        // Curve Z forward based on wind
+        const zBulge = Math.sin(v * Math.PI) * Math.sin(u * Math.PI) * 2.5;
+        posAttr.setZ(i, zBulge);
+      }
+      sailGeo.computeVertexNormals();
+
+      const chosenSailMat = (config.sailType === 'red') ? sailMat : sailCreamMat;
+      const sailMesh = new THREE.Mesh(sailGeo, chosenSailMat);
+      sailMesh.position.set(0, mastHeight * 0.55, 1.2);
+      mastSubGroup.add(sailMesh);
+      sailsList.push(sailMesh);
+
+      // Battens (横向竹筋)
+      for (let yRatio of [-0.35, -0.18, 0, 0.18, 0.35]) {
+        const batten = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, sailW + 0.4, 8), darkWoodMat);
+        batten.rotation.z = Math.PI / 2;
+        batten.position.set(0, mastHeight * 0.55 + yRatio * sailH, 1.5);
+        mastSubGroup.add(batten);
+      }
+
+      // Dragon & Ming Flags (桅顶旗帜)
+      const flagGeo = new THREE.PlaneGeometry(3.2, 1.8, 8, 4);
+      const flagMat = new THREE.MeshStandardMaterial({ color: idx % 2 === 0 ? 0xc02c2d : 0xd4af37, side: THREE.DoubleSide });
+      const flagMesh = new THREE.Mesh(flagGeo, flagMat);
+      flagMesh.position.set(1.6, mastHeight + 0.9, 0);
+      mastSubGroup.add(flagMesh);
+
+      registerPart(mastSubGroup, `${config.name}与硬帆`, `包含多节木桅杆、瞭望斗𪤗、横向竹筋加固的中式硬帆与桅顶风旗。`, new THREE.Vector3(0, 3, 0));
+    });
+
+    // Ratlines & Shrouds (盖伦式侧索绳网)
+    const riggingGroup = new THREE.Group();
+    mainShipGroup.add(riggingGroup);
+
+    for (let mastZ of [10, -3, -12]) {
+      for (let side of [-1, 1]) {
+        const points = [];
+        const topP = new THREE.Vector3(side * 0.8, 30, mastZ);
+        const botP1 = new THREE.Vector3(side * 6.5, 10, mastZ - 4);
+        const botP2 = new THREE.Vector3(side * 6.5, 10, mastZ + 4);
+        
+        // Ropes going down
+        for (let step = 0; step <= 8; step++) {
+          const t = step / 8;
+          const leftP = new THREE.Vector3().lerpVectors(topP, botP1, t);
+          const rightP = new THREE.Vector3().lerpVectors(topP, botP2, t);
+          points.push(leftP, rightP);
+        }
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const ratlines = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x4a3b2c }));
+        riggingGroup.add(ratlines);
+      }
+    }
+
+    // Move initial main group slightly up
+    mainShipGroup.position.y = 1.2;
+
+    // Remove loading overlay
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 600);
+
+    // --- 6. Raycasting & Clicking Interaction ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', (event) => {
+      // Prevent clicking UI
+      if (event.target.closest('#hud-top') || event.target.closest('#info-panel') || event.target.closest('#controls')) return;
+
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(shipParts, true);
+
+      if (intersects.length > 0) {
+        // Find topmost registered part
+        let hitObj = intersects[0].object;
+        while (hitObj && !hitObj.userData.name && hitObj.parent) {
+          hitObj = hitObj.parent;
+        }
+
+        if (hitObj && hitObj.userData.name) {
+          showInfoPanel(hitObj.userData.name, hitObj.userData.description);
+        }
+      }
+    });
+
+    function showInfoPanel(title, desc) {
+      const panel = document.getElementById('info-panel');
+      document.getElementById('info-title').innerText = title;
+      document.getElementById('info-desc').innerText = desc;
+      panel.classList.add('active');
+    }
+
+    function closeInfoPanel() {
+      document.getElementById('info-panel').classList.remove('active');
+    }
+
+    // --- 7. Controls & Explode Animation ---
+    let autoRotate = false;
+    function toggleAutoRotate() {
+      autoRotate = !autoRotate;
+      controls.autoRotate = autoRotate;
+      controls.autoRotateSpeed = 1.5;
+      document.getElementById('btn-rotate').classList.toggle('active', autoRotate);
+    }
+
+    let wireframeMode = false;
+    function toggleWireframe() {
+      wireframeMode = !wireframeMode;
+      scene.traverse((child) => {
+        if (child.isMesh && child !== ocean) {
+          child.material.wireframe = wireframeMode;
+        }
+      });
+      document.getElementById('btn-wireframe').classList.toggle('active', wireframeMode);
+    }
+
+    function onExplodeChange(val) {
+      const factor = parseFloat(val);
+      shipParts.forEach((part) => {
+        if (part.userData.origPos && part.userData.explodeDir) {
+          const targetPos = part.userData.origPos.clone().add(part.userData.explodeDir.clone().multiplyScalar(factor * 3.5));
+          part.position.copy(targetPos);
+        }
+      });
+    }
+
+    function resetCamera() {
+      controls.reset();
+      camera.position.set(45, 25, 55);
+      controls.target.set(0, 8, 0);
+      document.getElementById('explode-slider').value = 0;
+      onExplodeChange(0);
+      closeInfoPanel();
+    }
+
+    // --- 8. Animation & Render Loop ---
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const elapsedTime = clock.getElapsedTime();
+
+      // (A) Wave animation for Ocean
+      for (let i = 0; i < wavePos.count; i++) {
+        const u = wavePos.getX(i);
+        const v = wavePos.getY(i);
+        const z = Math.sin(u * 0.1 + elapsedTime * 1.5) * 0.4 + Math.cos(v * 0.1 + elapsedTime * 1.2) * 0.4;
+        wavePos.setZ(i, z);
+      }
+      oceanGeometry.attributes.position.needsUpdate = true;
+
+      // (B) Ship Bobbing & Rolling (海浪起伏摇晃)
+      mainShipGroup.position.y = 1.2 + Math.sin(elapsedTime * 1.2) * 0.45;
+      mainShipGroup.rotation.z = Math.sin(elapsedTime * 0.8) * 0.035; // Roll
+      mainShipGroup.rotation.x = Math.cos(elapsedTime * 0.9) * 0.025; // Pitch
+
+      // (C) Sail bulge subtle flutter (风吹帆面动效)
+      sailsList.forEach((sail, idx) => {
+        sail.rotation.y = Math.sin(elapsedTime * 2.0 + idx) * 0.02;
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // --- 9. Window Resize Handling ---
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 </body>
 </html>
